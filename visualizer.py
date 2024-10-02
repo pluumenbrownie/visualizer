@@ -4,6 +4,7 @@ import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy.io import wavfile
+from numpy.fft import rfft, rfftfreq
 import matplotlib.style as mplstyle
 from alive_progress import alive_bar
 
@@ -13,8 +14,9 @@ PLOTSIZE = 1920
 FPS = 24
 px = 1 / plt.rcParams["figure.dpi"]  # pixel in inches
 
-# samplerate, song_data = wavfile.read('sinus20hz.wav')
-samplerate, song_data = wavfile.read("Vaatwasser_MetGitaar_final2.wav")
+samplerate, song_data = wavfile.read('tests/sinus20hz.wav')
+# samplerate, song_data = wavfile.read("input/Vaatwasser_MetGitaar_final2.wav")
+out_name = "sinus20hz.mp4"
 
 skipped_frames = samplerate // FPS
 amount_of_frames = len(song_data) // skipped_frames
@@ -46,7 +48,7 @@ frame_nr = 0
 logarithmic_range_1 = np.logspace(mt.log10(19), mt.log10(50), 8)
 logarithmic_range_2 = np.logspace(mt.log10(logarithmic_range_1[-1]), mt.log10(3000), 30)
 logarithmic_range_3 = np.logspace(
-    mt.log10(logarithmic_range_2[-1]), mt.log10((window_width // 2)), 25
+    mt.log10(logarithmic_range_2[-1]), mt.log10((samplerate // 2)), 25
 )
 
 logarithmic_range = np.append(logarithmic_range_1, logarithmic_range_2[1:])
@@ -54,38 +56,51 @@ logarithmic_range = np.append(logarithmic_range, logarithmic_range_3[1:])
 
 # frame = sound_gen.__next__()
 frame = sound_list.pop(0)
-# ideas 'borrowed' from https://github.com/aiXander/Realtime_PyAudio_FFT
-links_fft = np.abs(np.fft.rfft(frame[0] * np.hamming(len(frame[0]))))
-rechts_fft = np.abs(np.fft.rfft(frame[1] * np.hamming(len(frame[1]))))
 
-links_scaled_histogram, _ = np.histogram(
-    range(len(links_fft)),
-    logarithmic_range,
-    weights=links_fft,
-)
-rechts_scaled_histogram, _ = np.histogram(
-    range(len(links_fft)),
-    logarithmic_range,
-    weights=rechts_fft,
-)
+def fft_histogram(samplerate, logarithmic_range, frame):
+    # ideas 'borrowed' from https://github.com/aiXander/Realtime_PyAudio_FFT
+    links_fft = np.abs(rfft(frame[0] * np.hamming(len(frame[0]))))
+    rechts_fft = np.abs(rfft(frame[1] * np.hamming(len(frame[1]))))
+    frequencies = rfftfreq(len(links_fft), d=1./samplerate)
+    links_fft = links_fft[len(links_fft)//2:]
+    rechts_fft = rechts_fft[len(rechts_fft)//2:]
 
+    links_scaled_histogram, _ = np.histogram(
+        # range(len(links_fft)),
+        frequencies,
+        logarithmic_range,
+        weights=links_fft,
+    )
+    rechts_scaled_histogram, _ = np.histogram(
+        # range(len(links_fft)),
+        frequencies,
+        logarithmic_range,
+        weights=rechts_fft,
+    )
+    return links_scaled_histogram,rechts_scaled_histogram
+
+links_scaled_histogram, rechts_scaled_histogram = fft_histogram(samplerate, logarithmic_range, frame)
+plt.plot(rechts_scaled_histogram)
+plt.show()
+exit()
 
 def prepare_animation(bar_container):
     def animate(frame_data):
-        links_fft = np.abs(np.fft.rfft(frame_data[0] * np.hamming(len(frame[0]))))
-        rechts_fft = np.abs(np.fft.rfft(frame_data[1] * np.hamming(len(frame[1]))))
-        # np.BUFSIZE
+        # links_fft = np.abs(np.fft.rfft(frame_data[0] * np.hamming(len(frame[0]))))
+        # rechts_fft = np.abs(np.fft.rfft(frame_data[1] * np.hamming(len(frame[1]))))
+        # # np.BUFSIZE
 
-        links_scaled_histogram, _ = np.histogram(
-            range(len(links_fft)),
-            logarithmic_range,
-            weights=links_fft,
-        )
-        rechts_scaled_histogram, _ = np.histogram(
-            range(len(links_fft)),
-            logarithmic_range,
-            weights=rechts_fft,
-        )
+        # links_scaled_histogram, _ = np.histogram(
+        #     range(len(links_fft)),
+        #     logarithmic_range,
+        #     weights=links_fft,
+        # )
+        # rechts_scaled_histogram, _ = np.histogram(
+        #     range(len(links_fft)),
+        #     logarithmic_range,
+        #     weights=rechts_fft,
+        # )
+        links_scaled_histogram, rechts_scaled_histogram = fft_histogram(samplerate, logarithmic_range, frame)
         y_bars = np.append(np.flip(rechts_scaled_histogram), links_scaled_histogram)
 
         for count, rect in zip(y_bars, bar_container.patches):
@@ -120,12 +135,17 @@ ani = animation.FuncAnimation(
 starting_time = time.time()
 fig.tight_layout()
 
+# exit()
+
 with alive_bar(len(sound_list)) as bar:
+    def call_bar(amount: int, total: int):
+        bar()
+
     ani.save(
-        "Vaatwasser.mp4",
+        f"out/{out_name}",
         "ffmpeg",
         FPS,
-        progress_callback=bar,
+        progress_callback=call_bar,
         savefig_kwargs={"pad_inches": 0},
     )
 

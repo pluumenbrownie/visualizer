@@ -29,6 +29,8 @@
           python312Packages.numpy
           python312Packages.alive-progress
           python312Packages.scipy
+          python312Packages.manim
+          ffmpeg_7-full
         ];
 
       };
