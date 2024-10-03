@@ -7,7 +7,7 @@ from scipy.io import wavfile
 from numpy.fft import rfft, rfftfreq
 import matplotlib.style as mplstyle
 from alive_progress import alive_bar
-from typing import Self, Sequence
+from typing import Iterable, Self, Sequence
 from pathlib import Path
 from itertools import batched
 from manim import *
@@ -79,12 +79,29 @@ class Visualizer(Scene):
         bar_data = song.generate_histograms()
         bar_amount = len(bar_data[0])
         bars = []
+        width_unit = 16*RIGHT/bar_amount
         for n in range(bar_amount):
-            bar = Rectangle(width=0).shift(LEFT * 8)
-            bar.shift(RIGHT * 16 * n/bar_amount)
+            bar = Rectangle(height=1, width=width_unit[0], fill_opacity=1.0, stroke_color=np.array([0, 0, 0, 0]))
+            bar.set_stroke(opacity=0.0)
+            bar.shift(LEFT * 8 + (n + 0.5) * width_unit)
+            # bar.shift((n + 0.5) * width_unit)
             bars.append(bar)
             self.add(bar)
+        # bar_data = bar_data[0]
+        # print(f"{max(bar_data) = }")
+        scale_factor = 1e12
         
+        for frame_data in bar_data:
+            for bar, height in zip(bars, frame_data):
+                bar.stretch_to_fit_height(1920 * height / scale_factor)
+                self.wait(1 / config.frame_rate)
+        
+    def bar_animation(self, bars: list[Rectangle], bar_data: Sequence[float]) -> Iterable[Animation]:
+        output = []
+        scale_factor = 1e12
+        for bar, height in zip(bars, bar_data):
+            output.append(bar.stretch_to_fit_height(height / scale_factor))
+        return output
 
 
 # PLOTSIZE = 1920
