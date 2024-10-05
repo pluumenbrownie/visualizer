@@ -17,6 +17,12 @@ config.frame_height = config.frame_width = 16
 config.pixel_height = config.pixel_width = 1920
 config.frame_rate = 24
 
+mplstyle.use("fast")
+
+PLOTSIZE = 1920
+FPS = 24
+px = 1 / plt.rcParams["figure.dpi"]  # pixel in inches
+
 
 class AudioStream:
     def __init__(self, audio_data: Sequence[float], window_size: int) -> None:
@@ -78,6 +84,7 @@ class Visualizer(Scene):
         song = Song(Path("tests/sinus.wav"), 24)
         bar_data = song.generate_histograms()
         bar_amount = len(bar_data[0])
+        print(f"{len(bar_data) = }")
         bars = []
         width_unit = 16*RIGHT/bar_amount
         for n in range(bar_amount):
@@ -94,7 +101,7 @@ class Visualizer(Scene):
         for frame_data in bar_data:
             for bar, height in zip(bars, frame_data):
                 bar.stretch_to_fit_height(1920 * height / scale_factor)
-                self.wait(1 / config.frame_rate)
+            self.wait(1 / config.frame_rate)
         
     def bar_animation(self, bars: list[Rectangle], bar_data: Sequence[float]) -> Iterable[Animation]:
         output = []
@@ -102,6 +109,16 @@ class Visualizer(Scene):
         for bar, height in zip(bars, bar_data):
             output.append(bar.stretch_to_fit_height(height / scale_factor))
         return output
+    
+
+class MatplotlibVisualizer:
+    def __init__(self, song: Song) -> None:
+        self.song = song
+
+    def save_to(self, out_path: str):
+        song_data = self.song.generate_histograms()
+
+
 
 
 # PLOTSIZE = 1920
