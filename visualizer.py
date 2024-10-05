@@ -135,8 +135,6 @@ ani = animation.FuncAnimation(
 starting_time = time.time()
 fig.tight_layout()
 
-# exit()
-
 with alive_bar(len(sound_list)) as bar:
     def call_bar(amount: int, total: int):
         bar()
